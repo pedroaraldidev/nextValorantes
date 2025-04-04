@@ -1,8 +1,7 @@
+import Link from 'next/link';
 import Navbar from '@/components/NavBar';
 import Footer from '@/components/Footer';
-import Image from 'next/image';
 
-// Tipos para os cards da página inicial
 interface FeatureCard {
   title: string;
   description: string;
@@ -59,18 +58,18 @@ export default function Home() {
             Tudo o que você precisa para dominar o jogo em um só lugar. Notícias, rankings, estatísticas e muito mais.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <a 
+            <Link
               href="/blog" 
               className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-300"
             >
               Explorar Conteúdo
-            </a>
-            <a 
+            </Link>
+            <Link
               href="/lfg" 
               className="px-6 py-3 bg-transparent border border-white text-white rounded-lg hover:bg-white hover:text-gray-900 transition duration-300"
             >
               Encontrar Time
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -90,12 +89,12 @@ export default function Home() {
                 <div className="text-4xl mb-4">{card.icon}</div>
                 <h3 className="text-xl font-semibold text-white mb-2">{card.title}</h3>
                 <p className="text-gray-300 mb-4">{card.description}</p>
-                <a 
+                <Link
                   href={card.href} 
                   className="text-white hover:underline inline-flex items-center"
                 >
                   Saiba mais →
-                </a>
+                </Link>
               </div>
             ))}
           </div>
@@ -107,7 +106,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-bold text-white">Últimas Notícias</h2>
-            <a href="/blog" className="text-red-400 hover:text-red-300">Ver todas</a>
+            <Link href="/blog">Ver todas</Link>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -118,9 +117,9 @@ export default function Home() {
                   <p className="text-gray-300 mb-4">{post.excerpt}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 text-sm">{post.date}</span>
-                    <a href={`/blog/${post.id}`} className="text-red-400 hover:text-red-300">
+                    <Link href={`/blog/${post.id}`} className="text-red-400 hover:text-red-300">
                       Ler mais →
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>

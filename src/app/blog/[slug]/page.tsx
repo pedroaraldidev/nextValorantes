@@ -57,9 +57,7 @@ export default function Update1006Page() {
             <p>
               Até a próxima, bom jogo pra todo mundo e não se esqueçam de 1, 2, 3, banguei!
             </p>
-            <p className="text-red-400 italic">
-              (Esse último é só uma piada de Primeiro de Abril, não me mate, por favor.)
-            </p>
+            <p>{`(Esse último é só uma piada de Primeiro de Abril, não me mate, por favor.)`}</p>
           </div>
 
           {/* Seção de Atualizações */}
@@ -130,7 +128,7 @@ export default function Update1006Page() {
               <h3 className="text-xl font-semibold text-red-400 mb-3">ATUALIZAÇÕES DE DESEMPENHO</h3>
               <p>
                 Reduzimos o número de objetos específicos do mapa Sunset que se renovam a cada quadro, melhorando assim o desempenho do processador.
-              </p>
+              </p>  
             </div>
             
             <div className="bg-gray-800 p-6 rounded-lg">
@@ -142,7 +140,7 @@ export default function Update1006Page() {
               <h6 className="font-medium text-gray-300">Rosa Arcana</h6>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li>Corrigimos um bug que parava o loope de animação de repouso de Rosa Arcana se a Vyse se agachasse.</li>
-                <li>Corrigimos um bug em que destruir a Rosa Arcana enquanto Vyse a recuperava não respeitava o tempo de recarga de "destruição" de 40 segundos.</li>
+                <li>Corrigimos um bug em que destruir a Rosa Arcana enquanto Vyse a recuperava não respeitava o tempo de recarga de destruição de 40 segundos.</li>
               </ul>
             </div>
           </div>

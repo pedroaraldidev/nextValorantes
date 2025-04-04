@@ -59,7 +59,7 @@ export default function NotFound() {
         </div>
 
         <p className="mt-8 text-gray-400 italic">
-          "Watch this!" - Jett, provavelmente
+          Watch this! - Jett, provavelmente
         </p>
       </div>
     </div>
