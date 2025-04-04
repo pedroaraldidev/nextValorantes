@@ -1,5 +1,5 @@
 Valorantes - Site de Comunidade para VALORANT
-Preview do Site
+URL Aplicação: valorantes.com.br
 
 Um site completo sobre VALORANT com blog, rankings e sistema para encontrar times (LFG), desenvolvido com Next.js e TypeScript.
 
@@ -26,3 +26,4 @@ Estilização: Tailwind CSS
 Componentes: React Icons
 
 Build: Next.js (Static Site Generation)
+
