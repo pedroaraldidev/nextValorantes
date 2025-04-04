@@ -46,7 +46,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-semibold text-red-400 mb-4">Contato</h3>
             <ul className="space-y-2 text-gray-400">
-              <li>Email: contato@valorantes.com</li>
+              <li>Email: contato@valorantes.com.br</li>
               <li>Tiktok: @1badblock</li>
               {/* <li>Discord: discord.gg/valorant</li> */}
             </ul>
