@@ -28,6 +28,7 @@ export default function Navbar() {
           <Link href="/blog" className="hover:text-red-400">Blog</Link>
           <Link href="/ranking" className="hover:text-red-400">Ranking</Link>
           <Link href="/lfg" className="hover:text-red-400">LFG</Link>
+          <Link href="/treino-mira" className="hover:text-red-400" onClick={() => setIsOpen(false)}>Treino de Mira</Link>
         </div>
       </div>
 

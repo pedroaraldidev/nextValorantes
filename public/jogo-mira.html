@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treino de Mira Avançado com Fullscreen Automático</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        canvas {
+            cursor: pointer; /* Default cursor, changes for other modes */
+            border-radius: 0.5rem; /* rounded-lg */
+            background-color: #4A5568; /* gray-700 - fallback if class doesn't apply fast enough */
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568; /* gray-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* gray-600 */
+        }
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4299e1; /* blue-500 */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .custom-range::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4299e1; /* blue-500 */
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        select, input[type="number"] {
+            background-color: #4A5568; /* gray-700 */
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #2D3748; /* gray-800 */
+            width: 100%; /* Make inputs take full width of their container */
+        }
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-2 sm:p-4 select-none">
+
+    <div id="game-ui-container" class="w-full max-w-4xl flex flex-col items-center">
+        <div id="ui-controls" class="w-full grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 sm:p-4 bg-gray-800 rounded-lg shadow-xl">
+            <div class="text-center md:text-left">
+                <h1 class="text-xl sm:text-2xl font-bold">Treino de Mira</h1>
+                <p class="text-lg" id="score-line">Pontos: <span id="score" class="font-semibold">0</span></p>
+                <p class="text-sm mt-1" id="combo-misses-line">Combo: <span id="combo-display" class="font-semibold">0</span> | Erros: <span id="misses-display" class="font-semibold">0</span></p>
+                 </div>
+
+            <div class="flex flex-col space-y-2 items-center" id="sensitivity-controls">
+                <div>
+                    <label for="mouse-dpi-input" class="mb-1 text-sm block">Mouse DPI:</label>
+                    <input type="number" id="mouse-dpi-input" value="800" class="text-sm">
+                </div>
+                <div>
+                    <label for="game-sens-input" class="mb-1 text-sm block">Sensibilidade:</label>
+                    <input type="number" id="game-sens-input" value="0.4" step="0.01" class="text-sm">
+                </div>
+                <p class="text-sm mt-1">eDPI Calculado: <span id="edpi-display" class="font-semibold">320</span></p>
+                 <div>
+                    <label for="sensitivity-slider" class="mb-1 text-sm block">
+                        Micro Ajuste: <span id="sensitivity-value-display" class="font-semibold">1.00</span>
+                    </label>
+                    <input type="range" id="sensitivity-slider" min="10" max="300" value="100" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer custom-range">
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center sm:items-end space-y-2">
+                <div>
+                    <label for="game-mode-select" class="mb-1 text-sm block">Modo de Jogo:</label>
+                    <select id="game-mode-select" class="text-sm">
+                        <option value="classic">Clássico</option>
+                        <option value="rhythm">Ritmo (com Sliders)</option>
+                        <option value="reflex">Teste de Reflexo</option>
+                    </select>
+                </div>
+                <button id="start-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-150 w-full mt-auto">
+                    Iniciar Jogo
+                </button>
+            </div>
+        </div>
+
+        <canvas id="game-canvas" class="bg-gray-700 shadow-xl w-full"></canvas>
+    </div>
+
+    <div id="message-box" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl text-center max-w-sm w-full">
+            <p id="message-text" class="text-lg sm:text-xl mb-6"></p>
+            <button id="message-ok-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition-colors duration-150">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game Element References
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const scoreLine = document.getElementById('score-line');
+        
+        const mouseDpiInput = document.getElementById('mouse-dpi-input');
+        const gameSensInput = document.getElementById('game-sens-input');
+        const edpiDisplay = document.getElementById('edpi-display');
+        
+        const sensitivitySlider = document.getElementById('sensitivity-slider');
+        const sensitivityValueDisplay = document.getElementById('sensitivity-value-display');
+        const sensitivityControls = document.getElementById('sensitivity-controls');
+        
+        const startButton = document.getElementById('start-button');
+        const gameModeSelect = document.getElementById('game-mode-select');
+        const comboDisplay = document.getElementById('combo-display');
+        const missesDisplay = document.getElementById('misses-display');
+        const comboMissesLine = document.getElementById('combo-misses-line');
+        // const fullscreenButton = document.getElementById('fullscreen-button'); // Botão removido
+        const uiControls = document.getElementById('ui-controls'); 
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageOkButton = document.getElementById('message-ok-button');
+
+        // Game State Variables
+        let score = 0;
+        let sensitivity = 1.0; 
+        let gameActive = false;
+        let pointerLocked = false;
+        let crosshairX, crosshairY;
+        let targets = [];
+        let animationFrameId;
+        let gameMode = 'classic';
+        let combo = 0;
+        let misses = 0;
+        let currentMessageOkCallback = null;
+
+        // Reflex Test Variables
+        let reflexTestState = 'initial_prompt'; 
+        let reflexStartTime = 0;
+        let reflexReactionTime = 0;
+        let reflexTimeoutId = null;
+        const REFLEX_MIN_WAIT = 1500; 
+        const REFLEX_MAX_WAIT = 4000; 
+
+
+        // Game Mode Specific Constants
+        const CLASSIC_TARGET_RADIUS_MIN = 10;
+        const CLASSIC_TARGET_RADIUS_MAX = 25;
+        const CLASSIC_MAX_TARGETS = 1;
+
+        const RHYTHM_CIRCLE_RADIUS = 20;
+        const RHYTHM_APPROACH_CIRCLE_MULTIPLIER = 3;
+        const RHYTHM_TARGET_LIFETIME = 2000; 
+        const RHYTHM_TARGET_SPAWN_INTERVAL = 1000;
+        const RHYTHM_MAX_TARGETS_ON_SCREEN = 5;
+        let lastRhythmTargetSpawnTime = 0;
+
+        const RHYTHM_SLIDER_CHANCE = 0.4; 
+        const RHYTHM_SLIDER_BALL_RADIUS = 22; 
+        const RHYTHM_SLIDER_FOLLOW_TOLERANCE = 35; 
+        const RHYTHM_SLIDER_MIN_LENGTH = 100;
+        const RHYTHM_SLIDER_MAX_LENGTH = 300;
+        const RHYTHM_SLIDER_SPEED = 150; 
+
+        // Sensitivity Calculation Constant
+        const VALORANT_EQUIVALENT_TO_GAME_SENS_RATIO = 2.5; 
+
+        class Target { 
+            constructor(params) {
+                this.x = params.x; this.y = params.y; this.radius = params.radius; this.color = params.color;
+                this.type = params.type || 'circle'; this.mode = params.mode;
+                this.spawnTime = Date.now(); this.isHit = false; this.isClicked = false;
+                if (this.mode === 'rhythm') {
+                    this.approachCircleRadius = this.radius * RHYTHM_APPROACH_CIRCLE_MULTIPLIER;
+                    this.approachStartTime = this.spawnTime;
+                    this.disappearTime = this.spawnTime + RHYTHM_TARGET_LIFETIME;
+                    if (this.type === 'slider') {
+                        this.endX = params.endX; this.endY = params.endY;
+                        this.sliderBallColor = 'rgba(220, 220, 80, 0.9)'; this.sliderPathColor = 'rgba(200, 200, 200, 0.6)';
+                        this.sliderLength = Math.sqrt((this.endX - this.x)**2 + (this.endY - this.y)**2);
+                        this.sliderTotalDuration = (this.sliderLength / RHYTHM_SLIDER_SPEED) * 1000; 
+                        this.sliderActivatedTime = 0; this.isSliderActive = false; 
+                        this.sliderBallCurrentX = this.x; this.sliderBallCurrentY = this.y;
+                    }
+                }
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.isSliderActive ? 'rgba(150,150,150,0.7)' : this.color;
+                ctx.fill(); ctx.closePath();
+                if (this.mode === 'rhythm' && !this.isClicked && this.approachCircleRadius > this.radius) {
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.approachCircleRadius, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 2;
+                    ctx.stroke(); ctx.closePath();
+                }
+                if (this.type === 'slider') {
+                    ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.endX, this.endY);
+                    ctx.strokeStyle = this.sliderPathColor; ctx.lineWidth = this.radius * 1.5; 
+                    ctx.stroke(); ctx.closePath();
+                    ctx.beginPath(); ctx.arc(this.endX, this.endY, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color; ctx.fill(); ctx.closePath();
+                    if (this.isSliderActive) {
+                        ctx.beginPath(); ctx.arc(this.sliderBallCurrentX, this.sliderBallCurrentY, RHYTHM_SLIDER_BALL_RADIUS, 0, Math.PI * 2);
+                        ctx.fillStyle = this.sliderBallColor; ctx.fill();
+                        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+                        ctx.stroke(); ctx.closePath();
+                    }
+                }
+            }
+            update(currentTime) {
+                if (this.isHit) return false;
+                if (this.mode === 'rhythm' && !this.isClicked) {
+                    const timeElapsedSinceSpawn = currentTime - this.approachStartTime;
+                    const totalApproachTime = RHYTHM_TARGET_LIFETIME;
+                    if (timeElapsedSinceSpawn < totalApproachTime) {
+                        const progress = timeElapsedSinceSpawn / totalApproachTime;
+                        this.approachCircleRadius = this.radius + (this.radius * (RHYTHM_APPROACH_CIRCLE_MULTIPLIER - 1) * (1 - progress));
+                        this.approachCircleRadius = Math.max(this.radius, this.approachCircleRadius);
+                    } else { this.approachCircleRadius = this.radius;}
+                }
+                if (currentTime > this.disappearTime && !this.isClicked && !this.isSliderActive) {
+                    this.isHit = true; return true; 
+                }
+                if (this.type === 'slider' && this.isSliderActive) {
+                    const timeElapsedOnSlider = currentTime - this.sliderActivatedTime;
+                    let progress = timeElapsedOnSlider / this.sliderTotalDuration;
+                    progress = Math.min(progress, 1);
+                    this.sliderBallCurrentX = this.x + (this.endX - this.x) * progress;
+                    this.sliderBallCurrentY = this.y + (this.endY - this.y) * progress;
+                    const distToSliderBall = Math.sqrt((crosshairX - this.sliderBallCurrentX)**2 + (crosshairY - this.sliderBallCurrentY)**2);
+                    if (distToSliderBall > RHYTHM_SLIDER_FOLLOW_TOLERANCE + RHYTHM_SLIDER_BALL_RADIUS) {
+                        this.isSliderActive = false; this.isHit = true; return true; 
+                    }
+                    if (progress >= 1) {
+                        this.isSliderActive = false; this.isHit = true; return true; 
+                    }
+                }
+                return false; 
+            }
+            checkInitialHit(px, py) { 
+                if (this.isClicked || this.isHit) return false;
+                const distance = Math.sqrt((px - this.x) ** 2 + (py - this.y) ** 2);
+                return distance < this.radius;
+            }
+        }
+        
+        function showMessage(text, okCallback) {
+            messageText.textContent = text;
+            currentMessageOkCallback = okCallback;
+            messageBox.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            messageBox.classList.add('hidden');
+            if (currentMessageOkCallback) currentMessageOkCallback();
+            currentMessageOkCallback = null;
+        }
+        messageOkButton.addEventListener('click', hideMessage);
+
+        function setupCanvas() {
+            const gameUiContainer = document.getElementById('game-ui-container');
+            const isCanvasFullscreen = document.fullscreenElement === canvas ||
+                                     document.webkitFullscreenElement === canvas ||
+                                     document.mozFullScreenElement === canvas ||
+                                     document.msFullscreenElement === canvas;
+            
+            let newWidth, newHeight;
+
+            if (isCanvasFullscreen) { 
+                newWidth = window.innerWidth; 
+                newHeight = window.innerHeight;
+            } else { 
+                const maxWidth = 1000; 
+                const containerWidth = gameUiContainer.clientWidth;
+                newWidth = Math.min(containerWidth > 20 ? containerWidth - 20 : containerWidth, maxWidth);
+                newHeight = newWidth * (3 / 4); 
+            }
+            
+            canvas.width = Math.max(100, newWidth); 
+            canvas.height = Math.max(75, newHeight); 
+
+            crosshairX = canvas.width / 2;
+            crosshairY = canvas.height / 2;
+        }
+
+        function calculateAndUpdateSensitivity() {
+            const dpi = parseFloat(mouseDpiInput.value) || 800;
+            const gameSpecificSens = parseFloat(gameSensInput.value) || 0.4;
+            const fineTuneMultiplier = parseFloat(sensitivitySlider.value) / 100;
+
+            const calculatedEDPI = dpi * gameSpecificSens;
+            edpiDisplay.textContent = calculatedEDPI.toFixed(0);
+            sensitivityValueDisplay.textContent = fineTuneMultiplier.toFixed(2);
+            sensitivity = gameSpecificSens * VALORANT_EQUIVALENT_TO_GAME_SENS_RATIO * fineTuneMultiplier;
+        }
+        
+        function updateGameMode() {
+            gameMode = gameModeSelect.value;
+            if (gameMode === 'reflex') {
+                sensitivityControls.classList.add('hidden');
+                comboMissesLine.classList.add('hidden');
+                scoreLine.childNodes[0].nodeValue = 'Último Tempo: '; 
+                scoreDisplay.textContent = "N/A";
+                canvas.style.cursor = 'pointer'; 
+            } else {
+                sensitivityControls.classList.remove('hidden');
+                comboMissesLine.classList.remove('hidden');
+                scoreLine.childNodes[0].nodeValue = 'Pontos: ';
+                canvas.style.cursor = 'crosshair'; 
+            }
+            updateScoreboard(); 
+        }
+
+        function spawnTarget() {
+            if (gameMode === 'reflex') return; 
+            let newTargetParams = {};
+            const baseRadius = RHYTHM_CIRCLE_RADIUS;
+
+            if (gameMode === 'classic') {
+                if (targets.length >= CLASSIC_MAX_TARGETS) return;
+                const radius = Math.random() * (CLASSIC_TARGET_RADIUS_MAX - CLASSIC_TARGET_RADIUS_MIN) + CLASSIC_TARGET_RADIUS_MIN;
+                newTargetParams = {
+                    x: Math.random() * (canvas.width - radius * 2) + radius,
+                    y: Math.random() * (canvas.height - radius * 2) + radius,
+                    radius: radius, color: 'rgb(255, 60, 60)', mode: 'classic', type: 'circle'
+                };
+            } else if (gameMode === 'rhythm') {
+                if (targets.length >= RHYTHM_MAX_TARGETS_ON_SCREEN) return;
+                const isSlider = Math.random() < RHYTHM_SLIDER_CHANCE;
+                newTargetParams.x = Math.random() * (canvas.width - baseRadius * 2) + baseRadius;
+                newTargetParams.y = Math.random() * (canvas.height - baseRadius * 2) + baseRadius;
+                newTargetParams.radius = baseRadius; newTargetParams.mode = 'rhythm';
+                if (isSlider) {
+                    newTargetParams.type = 'slider'; newTargetParams.color = 'rgb(100, 220, 100)'; 
+                    let endX, endY, length;
+                    do { 
+                        const angle = Math.random() * Math.PI * 2;
+                        length = RHYTHM_SLIDER_MIN_LENGTH + Math.random() * (RHYTHM_SLIDER_MAX_LENGTH - RHYTHM_SLIDER_MIN_LENGTH);
+                        endX = newTargetParams.x + Math.cos(angle) * length;
+                        endY = newTargetParams.y + Math.sin(angle) * length;
+                    } while (endX < baseRadius || endX > canvas.width - baseRadius || endY < baseRadius || endY > canvas.height - baseRadius);
+                    newTargetParams.endX = endX; newTargetParams.endY = endY;
+                } else { 
+                    newTargetParams.type = 'circle'; newTargetParams.color = 'rgb(60, 150, 255)'; 
+                }
+                lastRhythmTargetSpawnTime = Date.now();
+            }
+            if (Object.keys(newTargetParams).length > 0) targets.push(new Target(newTargetParams));
+        }
+
+        function drawCrosshair() {
+            if (!pointerLocked || gameMode === 'reflex') return; 
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2;
+            ctx.moveTo(crosshairX - 10, crosshairY); ctx.lineTo(crosshairX + 10, crosshairY);
+            ctx.moveTo(crosshairX, crosshairY - 10); ctx.lineTo(crosshairX, crosshairY + 10);
+            ctx.stroke();
+        }
+
+        function updateScoreboard() {
+            if (gameMode === 'reflex') {
+                scoreDisplay.textContent = reflexReactionTime > 0 ? `${reflexReactionTime} MS` : "N/A";
+            } else {
+                scoreDisplay.textContent = score;
+                comboDisplay.textContent = combo;
+                missesDisplay.textContent = misses;
+            }
+        }
+        
+        function drawReflexTestScreen() {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold ${Math.min(canvas.width / 15, canvas.height / 8)}px Inter`; 
+
+            switch (reflexTestState) {
+                case 'initial_prompt':
+                    ctx.fillStyle = '#4A5568'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText('Teste de Reflexo', canvas.width / 2, canvas.height / 3);
+                    ctx.font = `normal ${Math.min(canvas.width / 25, canvas.height / 15)}px Inter`;
+                    ctx.fillText('Clique em qualquer lugar para começar', canvas.width / 2, canvas.height / 2);
+                    break;
+                case 'waiting_for_red':
+                    ctx.fillStyle = '#4A5568'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText('Prepare-se...', canvas.width / 2, canvas.height / 2 - 50);
+                    ctx.font = `normal ${Math.min(canvas.width / 25, canvas.height / 15)}px Inter`;
+                    ctx.fillText('Aguarde a tela ficar VERMELHA!', canvas.width / 2, canvas.height / 2 + 50);
+                    break;
+                case 'red_is_shown':
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                     ctx.fillStyle = 'white';
+                    ctx.fillText('CLIQUE!', canvas.width / 2, canvas.height / 2);
+                    break;
+                case 'result_displayed':
+                    ctx.fillStyle = 'green';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(`Seu tempo: ${reflexReactionTime} MS`, canvas.width / 2, canvas.height / 2 - 50);
+                    ctx.font = `normal ${Math.min(canvas.width / 25, canvas.height / 15)}px Inter`;
+                    ctx.fillText('Clique para tentar novamente', canvas.width / 2, canvas.height / 2 + 50);
+                    break;
+                case 'too_early_displayed':
+                    ctx.fillStyle = '#4299E1'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText('Muito cedo!', canvas.width / 2, canvas.height / 2 - 30);
+                    ctx.font = `normal ${Math.min(canvas.width / 25, canvas.height / 15)}px Inter`;
+                    ctx.fillText('Aguarde a tela ficar vermelha. Clique para tentar novamente.', canvas.width / 2, canvas.height / 2 + 50);
+                    break;
+            }
+        }
+
+
+        function gameLoop() {
+            if (!gameActive) {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+                return;
+            }
+
+            const currentTime = Date.now();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameMode === 'reflex') {
+                drawReflexTestScreen();
+            } else {
+                for (let i = targets.length - 1; i >= 0; i--) {
+                    const target = targets[i];
+                    if (target.update(currentTime)) { 
+                        if (!target.isClicked && !target.isSliderActive && target.isHit) { 
+                            misses++;
+                            combo = 0;
+                        }
+                        targets.splice(i, 1);
+                    } else {
+                        target.draw();
+                    }
+                }
+                
+                if (gameMode === 'rhythm' && currentTime - lastRhythmTargetSpawnTime > RHYTHM_TARGET_SPAWN_INTERVAL) {
+                    if (targets.length < RHYTHM_MAX_TARGETS_ON_SCREEN) {
+                         spawnTarget();
+                    }
+                }
+                drawCrosshair();
+            }
+            updateScoreboard(); 
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function handlePointerLockChange() {
+            const isCanvasCurrentlyFullscreen = document.fullscreenElement === canvas ||
+                                             document.webkitFullscreenElement === canvas ||
+                                             document.mozFullScreenElement === canvas ||
+                                             document.msFullscreenElement === canvas;
+
+            if (document.pointerLockElement === canvas) {
+                pointerLocked = true;
+                if (gameMode !== 'reflex') canvas.style.cursor = 'none';
+                document.addEventListener('mousemove', handleMouseMove, false);
+                document.addEventListener('mouseup', handleCanvasMouseUp, false); 
+                if (gameActive && !animationFrameId) gameLoop();
+            } else { 
+                pointerLocked = false;
+                canvas.style.cursor = 'pointer'; 
+                if (gameMode !== 'reflex') canvas.style.cursor = 'crosshair';
+
+                document.removeEventListener('mousemove', handleMouseMove, false);
+                document.removeEventListener('mouseup', handleCanvasMouseUp, false); 
+                targets.forEach(t => {
+                    if (t.type === 'slider' && t.isSliderActive) {
+                        t.isSliderActive = false;
+                        t.isHit = true; 
+                        misses++; combo = 0;
+                    }
+                });
+                if (gameActive && gameMode !== 'reflex' && (!isCanvasCurrentlyFullscreen || (isCanvasCurrentlyFullscreen && !document.pointerLockElement))) {
+                     showMessage(isCanvasCurrentlyFullscreen ? "Cursor perdido. Clique na área de jogo para reativar." : "Cursor liberado. Clique na área de jogo para continuar.", () => {
+                        if (gameActive) canvas.requestPointerLock();
+                    });
+                }
+            }
+        }
+
+        function handleMouseMove(event) {
+            if (!pointerLocked || !gameActive || gameMode === 'reflex') return;
+            crosshairX += event.movementX * sensitivity;
+            crosshairY += event.movementY * sensitivity;
+            crosshairX = Math.max(0, Math.min(canvas.width, crosshairX));
+            crosshairY = Math.max(0, Math.min(canvas.height, crosshairY));
+        }
+        
+        function handlePointerLockError() {
+            console.error('Erro ao tentar travar o cursor.');
+            showMessage("Não foi possível travar o cursor. Verifique as permissões do navegador ou tente clicar novamente.", () => {});
+            pointerLocked = false;
+             canvas.style.cursor = (gameMode === 'reflex') ? 'pointer' : 'crosshair';
+        }
+
+        function handleCanvasMouseDown() {
+            if (!gameActive) return;
+
+            if (gameMode === 'reflex') {
+                clearTimeout(reflexTimeoutId); 
+                if (reflexTestState === 'initial_prompt' || reflexTestState === 'result_displayed' || reflexTestState === 'too_early_displayed') {
+                    reflexTestState = 'waiting_for_red';
+                    const waitTime = Math.random() * (REFLEX_MAX_WAIT - REFLEX_MIN_WAIT) + REFLEX_MIN_WAIT;
+                    reflexTimeoutId = setTimeout(() => {
+                        if (reflexTestState === 'waiting_for_red') { 
+                            reflexTestState = 'red_is_shown';
+                            reflexStartTime = Date.now();
+                        }
+                    }, waitTime);
+                } else if (reflexTestState === 'waiting_for_red') {
+                    reflexTestState = 'too_early_displayed';
+                    reflexReactionTime = 0; 
+                } else if (reflexTestState === 'red_is_shown') {
+                    reflexReactionTime = Date.now() - reflexStartTime;
+                    reflexTestState = 'result_displayed';
+                }
+                if (!animationFrameId && gameActive) gameLoop(); 
+                return; 
+            }
+
+            if (!pointerLocked) {
+                canvas.requestPointerLock();
+            } else {
+                let targetClicked = false;
+                for (let i = targets.length - 1; i >= 0; i--) {
+                    const target = targets[i];
+                    if (target.checkInitialHit(crosshairX, crosshairY)) {
+                        target.isClicked = true; 
+                        targetClicked = true;
+
+                        if (target.type === 'circle') {
+                            target.isHit = true; 
+                            score++;
+                            combo++;
+                            targets.splice(i, 1); 
+                            if (gameMode === 'classic') spawnTarget();
+                        } else if (target.type === 'slider') {
+                            target.isSliderActive = true;
+                            target.sliderActivatedTime = Date.now();
+                            target.sliderBallCurrentX = target.x; 
+                            target.sliderBallCurrentY = target.y;
+                        }
+                        break; 
+                    }
+                }
+                updateScoreboard();
+            }
+        }
+
+        function handleCanvasMouseUp() {
+            if (!gameActive || !pointerLocked || gameMode === 'reflex') return;
+
+            let sliderProcessedOnMouseUp = false;
+            for (let i = targets.length - 1; i >= 0; i--) {
+                const target = targets[i];
+                if (target.type === 'slider' && target.isSliderActive) {
+                    target.isSliderActive = false; 
+                    target.isHit = true; 
+                    sliderProcessedOnMouseUp = true;
+
+                    const timeElapsedOnSlider = Date.now() - target.sliderActivatedTime;
+                    const progress = timeElapsedOnSlider / target.sliderTotalDuration;
+
+                    if (progress >= 0.98) { 
+                         const distToEnd = Math.sqrt((crosshairX - target.endX)**2 + (crosshairY - target.endY)**2);
+                        if (distToEnd < RHYTHM_SLIDER_FOLLOW_TOLERANCE + target.radius) {
+                            score++;
+                            combo++;
+                        } else { 
+                            misses++;
+                            combo = 0;
+                        }
+                    } else { 
+                        misses++;
+                        combo = 0;
+                    }
+                    targets.splice(i, 1); 
+                    break;
+                }
+            }
+            if(sliderProcessedOnMouseUp) updateScoreboard();
+        }
+        
+        function requestCanvasFullscreen() {
+            const targetElement = canvas;
+            // Check if not already in fullscreen to prevent errors
+            if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                if (targetElement.requestFullscreen) {
+                    targetElement.requestFullscreen();
+                } else if (targetElement.mozRequestFullScreen) { /* Firefox */
+                    targetElement.mozRequestFullScreen();
+                } else if (targetElement.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+                    targetElement.webkitRequestFullscreen();
+                } else if (targetElement.msRequestFullscreen) { /* IE/Edge */
+                    targetElement.msRequestFullscreen();
+                }
+            }
+        }
+
+        function startGame() {
+            gameActive = true;
+            score = 0; combo = 0; misses = 0;
+            targets = [];
+            pointerLocked = false; 
+            lastRhythmTargetSpawnTime = Date.now();
+            
+            clearTimeout(reflexTimeoutId); 
+            reflexTestState = 'initial_prompt'; 
+            reflexReactionTime = 0;
+
+            updateGameMode(); 
+            setupCanvas(); 
+            if (gameMode !== 'reflex') {
+                calculateAndUpdateSensitivity(); 
+            }
+            updateScoreboard();
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+            
+            if (gameMode === 'reflex' && document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            
+            // Request fullscreen when game starts (for any mode now)
+            requestCanvasFullscreen(); 
+            
+            if (gameMode === 'classic' || gameMode === 'rhythm') {
+                if (gameMode === 'classic') spawnTarget(); 
+                else if (gameMode === 'rhythm') for(let i=0; i < 2 ; i++) spawnTarget();
+                
+                showMessage(
+                    `Modo ${gameModeSelect.options[gameModeSelect.selectedIndex].text} iniciado! Clique na área para travar o cursor. ESC para liberar.`,
+                    () => {
+                        if (gameMode !== 'reflex') canvas.requestPointerLock(); 
+                        if (!animationFrameId) gameLoop(); 
+                    }
+                );
+            } else if (gameMode === 'reflex') {
+                if (!animationFrameId) gameLoop(); 
+            }
+            startButton.textContent = "Reiniciar Jogo";
+        }
+
+        function onFullScreenChange() {
+            const isCanvasCurrentlyFullscreen = document.fullscreenElement === canvas ||
+                                             document.webkitFullscreenElement === canvas ||
+                                             document.mozFullScreenElement === canvas ||
+                                             document.msFullscreenElement === canvas;
+            
+            if (isCanvasCurrentlyFullscreen) {
+                if (uiControls) uiControls.classList.add('hidden'); 
+            } else {
+                if (uiControls) uiControls.classList.remove('hidden'); 
+            }
+            
+            setupCanvas(); 
+            
+            if (gameActive) {
+                ctx.clearRect(0,0,canvas.width, canvas.height); 
+                if (gameMode !== 'reflex') {
+                    targets.forEach(t => t.draw()); 
+                    drawCrosshair(); 
+                } else {
+                    drawReflexTestScreen(); 
+                }
+                if (isCanvasCurrentlyFullscreen && gameMode !== 'reflex' && !document.pointerLockElement) { 
+                    canvas.requestPointerLock(); 
+                }
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupCanvas(); 
+            calculateAndUpdateSensitivity(); 
+            updateGameMode(); 
+
+            mouseDpiInput.addEventListener('input', calculateAndUpdateSensitivity);
+            gameSensInput.addEventListener('input', calculateAndUpdateSensitivity);
+            sensitivitySlider.addEventListener('input', calculateAndUpdateSensitivity);
+            
+            gameModeSelect.addEventListener('change', () => {
+                if (!gameActive) { 
+                    updateGameMode();
+                } else {
+                    gameModeSelect.value = gameMode; 
+                }
+            });
+            startButton.addEventListener('click', startGame);
+            canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            // fullscreenButton.addEventListener('click', toggleFullScreen); // Listener removido
+
+            document.addEventListener('pointerlockchange', handlePointerLockChange, false);
+            document.addEventListener('mozpointerlockchange', handlePointerLockChange, false);
+            document.addEventListener('webkitpointerlockchange', handlePointerLockChange, false); 
+            
+            document.addEventListener('pointerlockerror', handlePointerLockError, false);
+            document.addEventListener('mozpointerlockerror', handlePointerLockError, false); 
+            document.addEventListener('webkitpointerlockerror', handlePointerLockError, false); 
+
+            document.addEventListener('fullscreenchange', onFullScreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullScreenChange);
+            document.addEventListener('mozfullscreenchange', onFullScreenChange);
+            document.addEventListener('MSFullscreenChange', onFullScreenChange);
+
+            window.addEventListener('resize', () => {
+                const wasActive = gameActive;
+                const isCanvasCurrentlyFullscreen = document.fullscreenElement === canvas ||
+                                                 document.webkitFullscreenElement === canvas ||
+                                                 document.mozFullScreenElement === canvas ||
+                                                 document.msFullscreenElement === canvas;
+
+                if (!isCanvasCurrentlyFullscreen) {
+                    if (gameActive) { 
+                        gameActive = false; 
+                        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                        if (document.pointerLockElement === canvas) document.exitPointerLock();
+                         ctx.clearRect(0,0,canvas.width, canvas.height);
+                        ctx.fillStyle = "white";
+                        ctx.textAlign = "center";
+                        ctx.font = "16px Inter";
+                        ctx.fillText("Tela redimensionada. Clique em 'Reiniciar Jogo'.", canvas.width/2, canvas.height/2);
+                        if (wasActive) startButton.textContent = "Reiniciar Jogo"; 
+                    }
+                    setupCanvas(); 
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
