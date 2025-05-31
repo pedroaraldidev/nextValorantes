@@ -1,14 +1,10 @@
 // Em pages/jogo-de-mira.js (ou onde quer que você tenha o iframe)
-import Head from "next/head";
 import Navbar from "@/components/NavBar";
-
 
 export default function PaginaDoJogo() {
   return (
     <>
-
   <Navbar />
-   
       <div
         style={{
           display: "flex",
